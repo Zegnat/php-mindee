@@ -209,12 +209,122 @@ if (!is_string($me) || !is_profile_url($me = canonicalise_url($me))) {
         <meta charset="utf-8">
         <title>Authorize MinDee</title>
         <style>
+            * {
+                box-sizing: border-box;
+            }
+            html, body {
+                background-color: #FFF;
+                color: #111;
+                font-family: sans-serif;
+                font-size: 100%;
+            }
+            body {
+                width: 100%;
+                max-width: 45em;
+                margin: 0 auto;
+                padding: 3em 0 5em;
+            }
+            details, p, label:not(.inline) {
+                display: block;
+                margin: 1em 0;
+            }
+            .url {
+                text-decoration: underline;
+                color: #0074D9;
+            }
+            input {
+                font-family: inherit;
+                font-size: inherit;
+            }
+            input[type="url"], input[type="text"], input[type="email"] {
+                display: block;
+                width: calc(100% + 1em);
+                border: 1px solid #AAAAAA;
+                border-bottom-width: 4px;
+                border-radius: 1px 1px 4px 4px;
+                margin: auto calc(-.5em - 1px);
+                padding: .4em .5em;
+            }
+            .decide {
+                display: grid;
+                grid-template-columns: 25% 50% 25%;
+                grid-template-rows: 50% 50%;
+                grid-auto-flow: column;
+                border: 2px solid #AAAAAA;
+                border-radius: .5em;
+                overflow: hidden;
+            }
+            .decide button {
+                grid-row-start: 1;
+                grid-row-end: 3;
+                font-family: inherit;
+                font-size: inherit;
+                border: none;
+            }
+            button[type="submit"] {
+                background-color: #2ECC40;
+                border-left: 2px solid #AAAAAA;
+            }
+            button[form="deny"] {
+                background-color: #FF4136;
+                border-right: 2px solid #AAAAAA;
+            }
+            summary {
+                border-bottom-width: 1px;
+                border-radius: 3px;
+                padding-left: 2em;
+                position: relative;
+                display: block;
+
+                grid-column-start: 0;
+                grid-column-end: 2;
+            }
+            summary::before {
+                content: '+';
+                display: inline-block;
+                background-color: #EEEEEE;
+                border: 1px solid #AAAAAA;
+                height: 1.4em;
+                width: 1.4em;
+                border-radius: .7em;
+                text-align: center;
+                position: absolute;
+                left: 0;
+                top: -.1em;
+            }
+            summary:focus {
+                outline: none;
+            }
+            summary:focus::before {
+                outline: auto;
+            }
+            summary::after {
+                content: '...';
+            }
+            details[open] summary::before {
+                content: '-';
+                font-weight: bold;
+            }
+            details[open] summary::after {
+                content: ':';
+            }
+            .profile {
+                display: grid;
+                grid-template-columns: fit-content(50%) 1fr;
+                column-gap: 1.5em;
+                margin: 1em 0;
+            }
         </style>
     </head>
     <body>
+        <form method="GET" id="deny" action="<?= htmlspecialchars($redirect_uri) ?>">
+            <input type="hidden" name="error" value="access_denied">
+            <input type="hidden" name="error_description" value="The request was denied by the user.">
+            <input type="hidden" name="state" value="<?= htmlspecialchars($state) ?>">
+        </form>
         <form method="POST">
             <p>You are logging in to <span class="url"><?= htmlspecialchars($client_id) ?></span>.</p>
-            <p>The URL <label for="me">you will be identified as</label> is:</p>
+            <p>The URL <label for="me" class="inline">you will be identified as</label> is:</p>
             <input type="url" name="me" id="me" value="<?= htmlspecialchars($me) ?>">
             <p>The following scopes will be granted, uncheck any you do not wish to grant:</p>
             <ul>
@@ -223,22 +333,32 @@ if (!is_string($me) || !is_profile_url($me = canonicalise_url($me))) {
     <?php foreach ($scopes as $item): if ($item !== 'profile' && $item !== 'email'): ?>
                 <li><input type="checkbox" name="scope[]" value="<?= htmlspecialchars($item) ?>" checked> <?= htmlspecialchars($item) ?></li>
     <?php endif; endforeach; ?>
-                <li><label for="custom_scopes">Custom (space delimited):</label> <input type="text" name="custom_scopes" id="custom_scopes"></li>
             </ul>
-            <p>The following profile will be shared if the profile and optionally email scopes are granted:</p>
-            <label for="profile_name">Name:</label>
-            <input type="text" name="profile_name" id="profile_name">
-            <label for="profile_photo">Avatar URL:</label>
-            <input type="url" name="profile_photo" id="profile_photo">
-            <label for="profile_url">Homepage URL:</label>
-            <input type="url" name="profile_url" id="profile_url">
-            <label for="profile_email">Email address:</label>
-            <input type="email" name="profile_email" id="profile_email">
+            <details>
+                <summary>Grant custom scopes</summary>
+                <label for="custom_scopes">Write any scopes you wish to grant on top of those selected above. Space delimited.</label>
+                <textarea id="custom_scopes" name="custom_scopes"></textarea>
+            </details>
+            <details<?= in_array('profile', $scopes)?' open':'' ?>>
+                <summary>Your profile information</summary>
+                <div class="profile">
+                    <label for="profile_name">Name:</label>
+                    <input type="text" name="profile_name" id="profile_name">
+                    <label for="profile_photo">Avatar URL:</label>
+                    <input type="url" name="profile_photo" id="profile_photo">
+                    <label for="profile_url">Homepage URL:</label>
+                    <input type="url" name="profile_url" id="profile_url">
+                    <label for="profile_email">Email address:</label>
+                    <input type="email" name="profile_email" id="profile_email">
+                </div>
+            </details>
             <p>You will be redirected to <span class="url"><?= htmlspecialchars($redirect_uri) ?></span> from here.</p>
-            <button type="submit" name="deny">Cancel</button>
-            <label for="password">Password:</label>
-            <input type="password" name="password" id="password">
-            <button type="submit">Authorize</button>
+            <div class="decide">
+                <button type="submit" form="deny">Cancel</button>
+                <label for="password" class="inline">Password:</label>
+                <input type="password" name="password" id="password">
+                <button type="submit">Authorize</button>
+            </div>
         </form>
     </body>
 </html>
